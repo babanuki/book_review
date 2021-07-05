@@ -1,0 +1,47 @@
+<?php
+$servername="localhost";
+$username="cse20151602";
+$password="cse20151602";
+$dbname="db_cse20151602";
+
+$conn=new mysqli($servername, $username, $password, $dbname);
+
+if($conn->connect_error)
+	die("Connection failed: ".$conn->connect_error);
+
+$sql="create table script(
+   author varchar(255) not null,
+   img varchar(255),
+   publisher varchar(255) not null,
+   isbn varchar(14) not null,
+   title varchar(255) not null,
+   appr varchar(15000),
+   user_id varchar(255),
+   data timestamp,
+   point int(7)
+ );";
+
+$conn->query($sql);
+
+$sql="alter table script convert to charset utf8;";
+
+$conn->query($sql);
+
+$sql="create table book_info(
+   author varchar(255) not null,
+   publisher varchar(255) not null,
+   isbn varchar(48),
+   title varchar(255) not null,
+   img varchar(255),
+   point float,
+   point_cnt int(7)
+ );";
+
+$conn->query($sql);
+
+$sql="alter table book_info convert to charset utf8;";
+
+$conn->query($sql);
+
+$conn->close();
+?>

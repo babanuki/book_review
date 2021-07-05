@@ -1,0 +1,305 @@
+<html>
+<head>
+	<meta charset="utf-8">
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+	<script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+	<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+	<link rel="stylesheet" href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css"></link>
+	<link rel="stylesheet" href="http://cspro.sogang.ac.kr/~cse20151602/css/desktop.css" id="desktop"></link>
+	<link rel="stylesheet" href="http://cspro.sogang.ac.kr/~cse20151602/css/mobile.css" id="mobile"></link>
+	<script>
+		var canvas;
+		var context;
+		var img;
+		var arr;
+		var device="win16|win32|win64|mac|macintel";
+
+		$(window).resize(function(){
+			if(window.innerWidth>800)
+				document.getElementsByName("img")[0].style="left:350px; width:200px; height:300px;position:absolute; display:"+$('img').css('display')+";";
+			else
+				document.getElementsByName("img")[0].style="width:200px; height:300px; display:"+$('img').css('display')+";";
+		});
+
+		function device_check(){
+			if(what_device){
+				if(device.indexOf(navigator.platform.toLowerCase())<0)
+					document.getElementById("desktop").disabled=true;
+				else
+					document.getElementById("mobile").disabled=true;
+			}
+		};
+
+		$(document).ready(function(){
+			what_device=navigator.platform;
+			device_check();
+
+			$("#inputTitle").keyup(function(){
+					$.get("http://192.168.80.128/cgi-bin/Search_help.php?type=0&title="+$("#inputTitle").val()+"&author="+$("#inputAuthor").val()+"&publisher="+$("#inputPublisher").val()+"&isbn="+$("#inputIsbn").val(), function(data, status){
+						arr=data.split(", ");
+						auto(arr, 0);
+					});
+			});
+
+			$("#inputAuthor").keyup(function(){
+                                        $.get("http://192.168.80.128/cgi-bin/Search_help.php?type=1&title="+$("#inputTitle").val()+"&author="+$("#inputAuthor").val()+"&publisher="+$("#inputPublisher").val()+"&isbn="+$("#inputIsbn").val(), function(data, status){
+                                                arr=data.split(", ");
+                                                auto(arr, 1);
+                                        });
+                        });
+
+			$("#inputPublisher").keyup(function(){
+                                        $.get("http://192.168.80.128/cgi-bin/Search_help.php?type=2&title="+$("#inputTitle").val()+"&author="+$("#inputAuthor").val()+"&publisher="+$("#inputPublisher").val()+"&isbn="+$("#inputIsbn").val(), function(data, status){
+                                                arr=data.split(", ");
+                                                auto(arr, 2);
+                                        });
+                        });
+
+			$("#inputIsbn").keyup(function(){
+                                        $.get("http://192.168.80.128/cgi-bin/Search_help.php?type=3&title="+$("#inputTitle").val()+"&author="+$("#inputAuthor").val()+"&publisher="+$("#inputPublisher").val()+"&isbn="+$("#inputIsbn").val(), function(data, status){
+                                                arr=data.split(", ");
+                                                auto(arr, 3);
+                                        });
+                        });
+
+		});
+
+		function auto(lst, type){
+			var choice;
+
+			switch(type){
+				case 0:
+					choice="#inputTitle";
+					break;
+				case 1:
+					choice="#inputAuthor";
+					break;
+				case 2:
+					choice="#inputPublisher";
+					break;
+				default:
+					choice="#inputIsbn";
+
+			}
+
+			$(choice).autocomplete({
+				source:lst,
+				select:function(event, ui){
+					console.log(ui.item);
+				},
+				focus:function(event, ui){
+					return false;
+				}
+			});
+		};
+
+		function check(){
+			if(document.getElementsByName("user_id")[0].value.length==0){
+				alert("user id를 입력해주세요.");
+				document.getElementsByName("user_id")[0].focus();
+			}
+			else{
+				$("#edit_list").empty();
+
+				var chk=document.getElementsByName("type");
+				var tmp=0;
+
+				if(chk[0].checked)
+					tmp+=1;
+				if(chk[1].checked)
+					tmp+=2;
+
+				var title=document.getElementsByName("title")[0].value;
+				var author=document.getElementsByName("author")[0].value;
+				var publisher=document.getElementsByName("publisher")[0].value;
+				var isbn=document.getElementsByName("isbn")[0].value;
+
+				if(tmp==1){
+					if(title=="" && author=="" && publisher=="" && isbn==""){
+						alert("[제목], [저자], [출판사], [ISBN] 중 적어도 하나는 작성해주셔야 [작성 및 수정] 기능을 이용하실 수 있습니다.");
+						return;
+					}
+
+					$.get("http://192.168.80.128/cgi-bin/Search.php?user_id="+document.getElementsByName("user_id")[0].value+"&title="+title+"&author="+author+"&publisher="+publisher+"&isbn="+isbn, function(data, status){
+						script(data);
+					});
+				}
+				else if(tmp==3)
+					alert("[작성 및 수정]과 [작성 내역] 중 하나만 선택해주세요.");
+				else if(tmp==0)
+					alert("[작성 및 수정]과 [작성 내역] 중 하나를 선택해주세요.");
+				else{
+					$.get("http://192.168.80.128/cgi-bin/List.php?user_id="+document.getElementsByName("user_id")[0].value+"&title="+document.getElementsByName("title")[0].value+"&author="+document.getElementsByName("author")[0].value+"&publisher="+document.getElementsByName("publisher")[0].value+"&isbn="+document.getElementsByName("isbn")[0].value, function(data, status){
+                                        	print_list(data);
+                                        });
+				}
+			}
+		};
+
+		function print_list(tmp){
+			var data=JSON.parse(tmp);
+			var s="<strong>총 "+(data.items.length)+"개의 기록이 검색되었습니다.</strong>";
+
+			if(data.items.length==0){
+				alert("해당하는 작성 내역이 없습니다.");
+
+				return;
+			}
+
+			document.getElementsByName("img")[0].style="display:none;";
+
+			for(var i=0; i<data.items.length; i++){
+				s+="<p><table border=1>";
+				s+="<tr><td id='left'>작성 시각</td><td>"+moment(data.items[i].time).subtract('7', 'h').add('1', 'd').format('YYYY-MM-DD HH:mm:ss')+"</td></tr>";
+                                s+="<tr><td id='left'>제목</td><td>"+data.items[i].title+"</td></tr>";
+                                s+="<tr><td id='left'>저자</td><td>"+data.items[i].author+"</td></tr>";
+                                s+="<tr><td id='left'>출판사</td><td>"+data.items[i].publisher+"</td></tr>";
+                                s+="<tr><td id='left'>ISBN</td><td>"+data.items[i].isbn+"</td></tr>";
+				s+="<tr><td id='left'>평점</td><td>"+data.items[i].point+"  / 10</td></tr>";
+                                if(data.items[i].script!="")
+					s+="<tr><td colspan=2>"+data.items[i].script+"</td></tr>";
+				else
+					s+="<tr><td colspan=2><strong>아무것도 작성하지 않았습니다.</strong></td></tr>";
+				s+="</table>";
+			}
+
+			$("#edit_list").html(s);
+			$("#edit_list").css("display", "inline-block");
+			$("#inner").css("display", "none");
+		};
+
+		function re(){
+			document.getElementsByName("title")[0].value="";
+			document.getElementsByName("author")[0].value="";
+			document.getElementsByName("publisher")[0].value="";
+			document.getElementsByName("isbn")[0].value="";
+
+                        document.getElementsByName("title")[0].readOnly=false;
+                        document.getElementsByName("author")[0].readOnly=false;
+                        document.getElementsByName("publisher")[0].readOnly=false;
+                        document.getElementsByName("isbn")[0].readOnly=false;
+		};
+
+		function load_img(){
+			document.getElementsByName("img")[0].src="onloading.png";
+		};
+
+		function del(){
+			document.getElementsByName("script")[0].value="";
+		};
+
+		function script(tmp){
+			var data=JSON.parse(tmp);
+
+			document.getElementsByName("img")[0].style="left:350px; width:200px; height:300px; position:absolute;";
+
+			document.getElementsByName("script")[0].value="";
+
+			if(data.img.length==0 && data.title.length==0 && data.author.length==0 && data.publisher.length==0 && data.isbn.length==0){
+				alert("검색 결과가 없습니다.");
+
+				load_img();
+
+				$("#inner").css("display", "none");
+			}
+			else{
+				if(data.img!="")
+					document.getElementsByName("img")[0].src=data.img;
+				else
+					load_img();
+
+				$("#edit_list").css("display", "none");
+				$("#inner").css("display", "inline-block");
+
+				document.getElementsByName("script")[0].style="resize:none;";
+
+				cooking(data);
+
+				if(data.title!="")
+					document.getElementsByName("title")[0].value=data.title;
+                                if(data.author!="")
+                                        document.getElementsByName("author")[0].value=data.author;
+                                if(data.publisher!="")
+                                        document.getElementsByName("publisher")[0].value=data.publisher;
+                                if(data.isbn!="")
+                                        document.getElementsByName("isbn")[0].value=data.isbn;
+
+				if(data.script.length!=0)
+					document.getElementsByName("script")[0].value=data.script;
+
+				document.getElementsByName("title")[0].readOnly=true;
+                                document.getElementsByName("author")[0].readOnly=true;
+                                document.getElementsByName("publisher")[0].readOnly=true;
+                                document.getElementsByName("isbn")[0].readOnly=true;
+			}
+		};
+
+		function cooking(data){
+			$.get("http://192.168.80.128/cgi-bin/Cooking.php?title="+data.title+"&author="+data.author+"&publisher="+data.publisher+"&isbn="+data.isbn, function(out, status){
+                                if(out!="")
+                                        document.getElementsByName("overall_p")[0].innerText=parseFloat(out).toFixed(2)+"점  / 10";
+                                else
+                                        document.getElementsByName("overall_p")[0].innerText="아무도 평가하지 않았습니다.";
+                        });
+		};
+
+		function save(){
+			var point=document.getElementsByName("label_p")[0].value;
+
+			if(point==0){
+				alert("평점을 매겨 주시기 바랍니다.");
+				document.getElementsByName("label_p")[0].focus();
+				return;
+			}
+
+			$.get("http://192.168.80.128/cgi-bin/Save.php?user_id="+document.getElementsByName("user_id")[0].value+"&title="+document.getElementsByName("title")[0].value+"&author="+document.getElementsByName("author")[0].value+"&publisher="+document.getElementsByName("publisher")[0].value+"&isbn="+document.getElementsByName("isbn")[0].value+"&script="+document.getElementsByName("script")[0].value+"&dlalwl="+document.getElementsByName("img")[0].src+"&point="+point, function(data, status){
+				if(data.length!=0)
+					alert("저장되었습니다.");
+				else
+					alert("저장에 실패했습니다. 다시 시도해주세요.");
+			});
+		};
+	</script>
+</head>
+<body>
+    <div id="main">
+		<p><img src="" name="img" style="display:none;" onerror="load_img()"/>
+		<p>user id | <input type="text" name="user_id">
+		<p><label><input type="radio" name="type" value="edit"><span>작성 및 수정</span></label>
+		<label><input type="radio" name="type" value="list"><span>작성 내역</span></label>
+		<p>제목&nbsp&nbsp&nbsp&nbsp| <input type="text" name="title" id="inputTitle">
+		<p>저자&nbsp&nbsp&nbsp&nbsp| <input type="text" name="author" id="inputAuthor">
+		<p>출판사&nbsp| <input type="text" name="publisher" id="inputPublisher">
+		<p>ISBN&nbsp&nbsp&nbsp&nbsp| <input type="text" name="isbn" id="inputIsbn">
+		<p><button name="clear" onclick="re()">초기화</button> <button name="submit" onclick="check()">검색</button>
+		<br><br><br>
+		<div id="inner" style="display:none;">
+			<strong name="overall">모두의 평점 | <span name="overall_p"></span></strong><br>
+			<strong name="myPoint">나만의 평점 | <span name="myPoint_p"></span></strong>
+			<select name="label_p">
+				<option value=0 selected>평점 매기기</option>
+				<option value=1>1점</option>
+				<option value=2>2점</option>
+				<option value=3>3점</option>
+				<option value=4>4점</option>
+				<option value=5>5점</option>
+				<option value=6>6점</option>
+				<option value=7>7점</option>
+                	        <option value=8>8점</option>
+                	        <option value=9>9점</option>
+                	        <option value=10>10점</option>
+			</select>
+			<br><br>
+			<textarea name="script" cols=80 rows=20 form="inform"  autofocus required wrap="hard" placeholder="여기에 감상평을 작성해주세요."></textarea>
+			<br><br>
+			<button name="delete" onclick="del()" style="">삭제</button>
+			<button name="save" onclick="save()" style="">저장</button>
+		</div>
+	</div>
+		<div id="edit_list" style="display:none;">
+
+		</div>
+</body>
+</html>
+
